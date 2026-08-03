@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+  whatsAppLink  WhatsAppLink?
+  bots          Bot[]
+  alertChannels AlertChannel[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model WhatsAppLink {
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  phoneE164        String?   @unique
+  pairingCode      String
+  pairingExpiresAt DateTime
+  verifiedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum BotStatus {
+  UNKNOWN
+  ONLINE
+  DEGRADED
+  OFFLINE
+}
+
+model Bot {
+  id                     String    @id @default(uuid())
+  userId                 String
+  name                   String
+  apiKeyHash             String    @unique
+  heartbeatIntervalSeconds Int     @default(60)
+  status                 BotStatus @default(UNKNOWN)
+  lastHeartbeatAt        DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  heartbeatEvents HeartbeatEvent[]
+  alertEvents     AlertEvent[]
+
+  @@index([userId])
+}
+
+enum HeartbeatStatus {
+  OK
+  ERROR
+}
+
+model HeartbeatEvent {
+  id            String          @id @default(uuid())
+  botId         String
+  status        HeartbeatStatus
+  uptimeSeconds Int?
+  errorCount    Int?
+  lastError     String?
+  metadata      Json?
+  receivedAt    DateTime        @default(now())
+
+  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@index([botId, receivedAt])
+}
+
+enum AlertChannelKind {
+  WEBHOOK
+  WHATSAPP
+}
+
+model AlertChannel {
+  id        String           @id @default(uuid())
+  userId    String
+  kind      AlertChannelKind
+  config    Json
+  enabled   Boolean          @default(true)
+  createdAt DateTime         @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alertEvents AlertEvent[]
+
+  @@index([userId])
+}
+
+enum AlertKind {
+  DOWN
+  RECOVERED
+}
+
+model AlertEvent {
+  id        String    @id @default(uuid())
+  botId     String
+  channelId String
+  kind      AlertKind
+  message   String
+  sentAt    DateTime  @default(now())
+
+  bot     Bot          @relation(fields: [botId], references: [id], onDelete: Cascade)
+  channel AlertChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([botId, sentAt])
+}

@@ -1,0 +1,34 @@
+{
+  "name": "botops",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Observabilidade multi-tenant para bots de WhatsApp (Baileys) — heartbeat, detecção de queda e alertas.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev --workspace=api\" \"npm run dev --workspace=web\"",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:migrate": "npm run db:migrate --workspace=api",
+    "db:seed": "npm run db:seed --workspace=api",
+    "keys:generate": "node scripts/generate-keys.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "@whiskeysockets/baileys@6.7.24": true,
+    "esbuild@0.28.1": true,
+    "sharp@0.34.5": true,
+    "prisma@6.19.3": true,
+    "protobufjs@7.6.5": true
+  }
+}

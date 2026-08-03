@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: botops-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: botops
+      POSTGRES_PASSWORD: botops
+      POSTGRES_DB: botops
+    ports:
+      - "5433:5432"
+    volumes:
+      - botops-pg-data:/var/lib/postgresql/data
+
+volumes:
+  botops-pg-data:
