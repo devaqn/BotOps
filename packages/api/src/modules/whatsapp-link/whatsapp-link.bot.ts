@@ -1,3 +1,5 @@
+import { logger } from '../../lib/logger';
+import { AppError } from '../../errors/AppError';
 import { whatsapp, IncomingMessage } from '../../integrations/whatsapp';
 import { confirmPairing } from './whatsapp-link.service';
 
@@ -12,7 +14,17 @@ export async function routeIncomingMessage(message: IncomingMessage) {
     return;
   }
 
-  const link = await confirmPairing(match[1], message.phoneE164);
+  let link;
+  try {
+    link = await confirmPairing(match[1], message.phoneE164);
+  } catch (error) {
+    const text =
+      error instanceof AppError ? error.message : 'Não consegui vincular seu número agora. Tenta de novo em instantes.';
+    logger.error({ err: error, phoneE164: message.phoneE164 }, 'Falha ao confirmar pareamento do WhatsApp');
+    await whatsapp.sendMessage(message.phoneE164, `❌ ${text}`);
+    return;
+  }
+
   if (!link) {
     await whatsapp.sendMessage(message.phoneE164, '❌ Código inválido ou expirado. Gere um novo no painel.');
     return;
