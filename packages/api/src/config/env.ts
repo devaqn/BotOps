@@ -15,7 +15,13 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRES: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_DAYS: z.coerce.number().default(30),
 
-  WHATSAPP_ENABLED: z.coerce.boolean().default(true),
+  // NÃO usar z.coerce.boolean() aqui: ele faz Boolean(str) por baixo dos panos, e
+  // Boolean("false") é `true` em JS (qualquer string não-vazia é truthy) — isso faz
+  // WHATSAPP_ENABLED=false no .env ser silenciosamente ignorado.
+  WHATSAPP_ENABLED: z
+    .string()
+    .default('true')
+    .transform((value) => value.toLowerCase() !== 'false'),
   WHATSAPP_SESSION_DIR: z.string().default('./whatsapp-sessions'),
 
   HEARTBEAT_GRACE_MULTIPLIER: z.coerce.number().default(3),

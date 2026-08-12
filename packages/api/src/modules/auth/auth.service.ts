@@ -45,17 +45,24 @@ export async function issueRefreshToken(userId: string) {
 
 export async function rotateRefreshToken(rawToken: string) {
   const tokenHash = hashToken(rawToken);
-  const existing = await prisma.refreshToken.findUnique({ where: { tokenHash } });
 
-  if (!existing || existing.revokedAt || existing.expiresAt < new Date()) {
-    throw AppError.unauthorized('Refresh token inválido ou expirado');
-  }
-
-  await prisma.refreshToken.update({
-    where: { id: existing.id },
+  // updateMany com revokedAt: null e expiresAt válido no próprio WHERE faz a
+  // checagem e a revogação serem atômicas no banco — com findUnique + update
+  // separados, duas requisições concorrentes usando o mesmo refresh token (ex.:
+  // token roubado sendo usado ao mesmo tempo pelo dono legítimo e por um
+  // atacante) podiam ambas passar pela checagem antes de qualquer uma gravar a
+  // revogação, e as duas saíam com um refresh token novo válido em vez da
+  // segunda ser rejeitada.
+  const { count } = await prisma.refreshToken.updateMany({
+    where: { tokenHash, revokedAt: null, expiresAt: { gte: new Date() } },
     data: { revokedAt: new Date() },
   });
 
+  if (count === 0) {
+    throw AppError.unauthorized('Refresh token inválido ou expirado');
+  }
+
+  const existing = await prisma.refreshToken.findUniqueOrThrow({ where: { tokenHash } });
   const refreshToken = await issueRefreshToken(existing.userId);
   return { userId: existing.userId, refreshToken };
 }

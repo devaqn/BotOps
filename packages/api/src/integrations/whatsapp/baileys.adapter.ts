@@ -40,7 +40,12 @@ class BaileysAdapter implements WhatsAppAdapter {
         const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
         logger.warn({ statusCode, shouldReconnect }, 'Conexão do WhatsApp encerrada');
         if (shouldReconnect) {
-          this.start().catch((error) => logger.error({ err: error }, 'Falha ao reconectar ao WhatsApp'));
+          // Espera um pouco antes de tentar de novo — sem isso, uma falha de conexão
+          // persistente (credencial ruim, rede instável) vira um loop de reconexão em
+          // sequência rápida, hostil com o servidor do WhatsApp.
+          setTimeout(() => {
+            this.start().catch((error) => logger.error({ err: error }, 'Falha ao reconectar ao WhatsApp'));
+          }, 3000);
         }
       } else if (connection === 'open') {
         logger.info('WhatsApp conectado.');
